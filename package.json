@@ -1,0 +1,10 @@
+{
+  "name": "liga-de-dudo",
+  "version": "1.0.0",
+  "description": "Marcador y ranking acumulado para noches de dudo (local-first, sin servidor, gratis).",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/scoring.test.mjs && node tests/stats.test.mjs"
+  },
+  "license": "MIT"
+}

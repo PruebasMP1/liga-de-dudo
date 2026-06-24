@@ -1,0 +1,7 @@
+# Config local del entorno (rutas absolutas de tu PC, no va al repo)
+.claude/
+
+# Dependencias / sistema
+node_modules/
+.DS_Store
+Thumbs.db
