@@ -29,32 +29,38 @@ Los datos se guardan en ese mismo dispositivo (`localStorage`).
 - **Importar**: carga ese JSON en otro celular/PC para traspasar o restaurar los datos.
   Importar **reemplaza** los datos actuales.
 
-## Cómo se cuentan los puntos (supervivencia)
+## Cómo se cuentan los puntos
 
-La idea: **ganas 1 punto por cada rival que dejas atrás**. Así, sin tablas separadas, una
-mesa más grande vale más automáticamente.
+Hay **dos modos** seleccionables en el ranking (toggle **Puntaje**). El bono de victoria
+(`bonoVictoria`, extra solo para el ganador) aplica a ambos.
 
-```
-puntos = (N − posición) + bonoVictoria(solo el ganador) + puntoParticipación
-```
+### 🏅 Podio escalado (DEFAULT) — depende del nº de jugadores
 
-- `N` = jugadores en la mesa. `posición` 1 = ganador (último en pie); `posición` N = primer
-  eliminado (último lugar).
-- **bonoVictoria** (default 0): puntos extra solo para el ganador. Súbelo (p. ej. 3) si
-  quieres que *ganar* destaque por encima de todo.
-- **puntoParticipación** (default 0): puntos para todos por jugar; súbelo a 1 si no quieres
-  que nadie quede en cero.
+Idea: en cada mesa **solo puntúan los primeros lugares**, y una mesa más grande reparte
+más puntos y premia más arriba.
 
-Ejemplos con los valores por defecto:
+- Puntúan los primeros **M = ceil(N/2)** lugares (la mitad superior); el resto suma **0**.
+- El **ganador vale N puntos** en una mesa de N, y baja de a 1 por puesto hasta el corte.
 
-| Mesa | Ganador | 2° | 3° | 4° | … | Primer eliminado |
-|------|---------|----|----|----|---|------------------|
-| de 8 | **7** | 6 | 5 | 4 | … | 0 |
-| de 4 | **3** | 2 | 1 | — | — | 0 |
+| Mesa | 1° | 2° | 3° | 4° | 5°+ | Lugares que puntúan |
+|------|----|----|----|----|-----|---------------------|
+| de 7 | **7** | 6 | 5 | 4 | 0 | 4 |
+| de 6 | **6** | 5 | 4 | 0 | 0 | 3 |
+| de 4 | **4** | 3 | 0 | 0 | 0 | 2 |
 
-> **Consecuencia directa de "la mesa grande vale más":** sobrevivir hasta **4° en una mesa
-> de 8 (4 pts)** supera a **ganar una mesa de 4 (3 pts)**. Si no te gusta ese efecto, usa
-> `bonoVictoria` para que ganar pese más.
+Así, ganar/colocar en una mesa de 7 (reparte 7+6+5+4 = 22) rinde mucho más que en una de 4
+(reparte 4+3 = 7). Los empates en el borde del corte se promedian de forma justa (ej. un
+empate entre 4° y 5° en mesa de 7 da (4+0)/2 = 2 a cada uno).
+
+### Supervivencia (modo alternativo)
+
+**Ganas 1 punto por cada rival que dejas atrás:** `puntos = (N − posición)`. Casi todos
+suman algo (solo el primer eliminado queda en 0) y la mesa grande igual vale más, pero de
+forma más suave. Acepta además `puntoParticipación` (puntos para todos por jugar).
+
+> Diferencia clave: en **Podio** un mid-table de mesa grande queda en 0 (solo cuentan los
+> primeros); en **Supervivencia** casi todos suman. Elige el que sientas más justo para tu
+> grupo con el toggle del ranking.
 
 ## Ranking por suma vs. por promedio (y por qué importa la asistencia)
 

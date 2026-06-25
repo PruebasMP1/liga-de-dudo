@@ -9,6 +9,7 @@ import {
   calcularAcumulado,
   exportarEstado,
   importarEstado,
+  lugaresQuePuntuan,
 } from "./scoring.js";
 import {
   calcularEstadisticas,
@@ -242,6 +243,11 @@ function vistaEditorOrden(orden, contexto) {
     <section>
       <h2>${contexto.titulo}</h2>
       <p class="sub">Mesa de ${N}. Orden: 1° = primer eliminado (último lugar), ${orden.length}° = ganador.</p>
+      ${
+        estado.configuracion.modoPuntos === "podio"
+          ? `<p class="nota">🏅 Modo Podio: puntúan los primeros <b>${lugaresQuePuntuan(N)}</b> lugares (el ganador vale ${N} pts); el resto suma 0.</p>`
+          : ""
+      }
       <p class="nota">Usa ↑/↓ para corregir el orden. "Unir ↑" marca empate con el de arriba; "separar" deshace el empate.</p>
       <ol class="lista editor-orden">${filasHtml}</ol>
       ${seccionStatsEditor(orden)}
@@ -325,6 +331,11 @@ function vistaRanking() {
 
       <div class="config-bar">
         <div class="toggle">
+          <span>Puntaje:</span>
+          <button class="pill ${cfg.modoPuntos === "podio" ? "on" : ""}" data-modo="podio">🏅 Podio</button>
+          <button class="pill ${cfg.modoPuntos === "supervivencia" ? "on" : ""}" data-modo="supervivencia">Supervivencia</button>
+        </div>
+        <div class="toggle">
           <span>Ordenar por:</span>
           <button class="pill ${cfg.metricaRanking === "total" ? "on" : ""}" data-metrica="total">Total</button>
           <button class="pill ${cfg.metricaRanking === "promedio" ? "on" : ""}" data-metrica="promedio">Promedio</button>
@@ -360,7 +371,11 @@ function vistaRanking() {
                 <tbody>${filas}</tbody>
               </table>
             </div>
-            <p class="nota">Se muestran <b>total</b> y <b>promedio</b> siempre, aunque ordenes por uno. Así ves si el líder lo es por rendimiento o por constancia.</p>`
+            <p class="nota">${
+              cfg.modoPuntos === "podio"
+                ? "<b>🏅 Podio:</b> en cada mesa solo puntúan los primeros lugares (la mitad superior). El ganador vale N puntos en una mesa de N, así que ganar/colocar en mesa grande rinde más."
+                : "<b>Supervivencia:</b> ganas 1 punto por cada rival que dejas atrás; casi todos suman algo."
+            } Se muestran <b>total</b> y <b>promedio</b> siempre, aunque ordenes por uno.</p>`
           : `<p class="vacio">Aún no hay partidas en este rango. Registra una en 🎲 Nueva.</p>`
       }
 
@@ -534,6 +549,8 @@ app.addEventListener("click", (e) => {
   if (t.id === "btn-editor-guardar") return guardarDesdeEditor();
 
   // ---- Ranking ----
+  const modo = t.closest("[data-modo]")?.dataset.modo;
+  if (modo) { estado.configuracion.modoPuntos = modo; persistir(); return render(); }
   const met = t.closest("[data-metrica]")?.dataset.metrica;
   if (met) { estado.configuracion.metricaRanking = met; persistir(); return render(); }
   if (t.id === "btn-limpiar-fechas") {
