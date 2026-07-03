@@ -17,10 +17,16 @@ import {
   statsTieneDatos,
 } from "./stats.js";
 import { cargarEstado, guardarEstado, idNuevo } from "./storage.js";
+import { nubeActiva, cargarDeNube, guardarEnNube } from "./nube.js";
 
 // ---- Estado global ---------------------------------------------------------
 let estado = cargarEstado();
 let tab = "ranking";
+
+// ---- Estado de sincronización con la nube ----------------------------------
+let ultimaSync = null;   // marca de tiempo del último estado que tenemos de la nube
+let syncMsg = "";        // texto que se muestra en la barra de sync
+let pushTimer = null;    // debounce para no golpear la nube en cada tecla
 
 // Borrador de la partida en curso (no se guarda hasta confirmar).
 //   fecha:    "YYYY-MM-DD"
@@ -46,7 +52,53 @@ const nombreDe = (id) => estado.jugadores.find((j) => j.id === id)?.nombre ?? "�
 const flatten = (orden) => orden.flatMap((e) => (Array.isArray(e) ? e : [e]));
 
 function persistir() {
-  guardarEstado(estado);
+  guardarEstado(estado);          // siempre guarda local (rápido y offline)
+  programarPushNube();            // y sube a la nube si está activa
+}
+
+// Sube el estado a la nube tras un pequeño retardo (evita muchas escrituras).
+function programarPushNube() {
+  if (!nubeActiva()) return;
+  syncMsg = "⏳ Guardando…";
+  actualizarBarra();
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async () => {
+    try {
+      ultimaSync = await guardarEnNube(estado);
+      syncMsg = "☁ Guardado en la nube";
+    } catch (e) {
+      console.error(e);
+      syncMsg = "⚠ Sin conexión (guardado local)";
+    }
+    actualizarBarra();
+  }, 600);
+}
+
+// Trae el estado de la nube. Si hay algo más nuevo y no estamos editando,
+// lo adopta y vuelve a pintar. forzar=true adopta aunque estemos en reposo.
+async function sincronizar(forzar = false) {
+  if (!nubeActiva()) return;
+  syncMsg = "⏳ Sincronizando…";
+  actualizarBarra();
+  try {
+    const res = await cargarDeNube();
+    if (res && res.estado && res.updatedAt !== ultimaSync) {
+      const editando = borrador || ordenEnEdicion;
+      if (forzar || !editando) {
+        estado = importarEstado(res.estado);
+        guardarEstado(estado);
+        ultimaSync = res.updatedAt;
+        syncMsg = "☁ Actualizado desde la nube";
+        render();
+        return;
+      }
+    }
+    syncMsg = "☁ Al día";
+  } catch (e) {
+    console.error(e);
+    syncMsg = "⚠ Sin conexión";
+  }
+  actualizarBarra();
 }
 
 // ============================================================================
@@ -62,8 +114,24 @@ function render() {
       ${tabBtn("jugadores", "👥 Jugadores")}
       ${tabBtn("respaldo", "💾 Respaldo")}
     </nav>
+    ${barraSyncHTML()}
     <main class="contenido">${vista()}</main>
   `;
+}
+
+// Barra fina que muestra el estado de la nube (solo si la nube está activa).
+function barraSyncHTML() {
+  if (!nubeActiva()) return "";
+  return `<div id="sync-bar" class="sync-bar">
+    <span id="sync-msg">${syncMsg || "☁ Nube compartida"}</span>
+    <button id="btn-sync" class="btn-min">🔄 Sincronizar</button>
+  </div>`;
+}
+
+// Actualiza solo el texto de la barra sin re-render completo (no molesta inputs).
+function actualizarBarra() {
+  const el = document.getElementById("sync-msg");
+  if (el) el.textContent = syncMsg || "☁ Nube compartida";
 }
 
 const tabBtn = (id, txt) =>
@@ -567,6 +635,9 @@ app.addEventListener("click", (e) => {
 
   // ---- Respaldo ----
   if (t.id === "btn-exportar") return exportar();
+
+  // ---- Sincronización ----
+  if (t.id === "btn-sync") return sincronizar(true);
 });
 
 app.addEventListener("change", (e) => {
@@ -817,3 +888,35 @@ function importar(archivo) {
 
 // ---- Arranque --------------------------------------------------------------
 render();
+
+if (nubeActiva()) {
+  (async () => {
+    try {
+      const res = await cargarDeNube();
+      const remotoTieneDatos =
+        res && res.estado &&
+        ((res.estado.jugadores?.length ?? 0) > 0 || (res.estado.partidas?.length ?? 0) > 0);
+      if (remotoTieneDatos) {
+        // La nube manda: adoptamos lo compartido.
+        estado = importarEstado(res.estado);
+        guardarEstado(estado);
+        ultimaSync = res.updatedAt;
+        syncMsg = "☁ Cargado desde la nube";
+        render();
+      } else {
+        // Nube vacía: subimos lo que haya local para crear la liga compartida.
+        ultimaSync = await guardarEnNube(estado);
+        syncMsg = "☁ Nube lista";
+        actualizarBarra();
+      }
+    } catch (e) {
+      console.error(e);
+      syncMsg = "⚠ Sin conexión (modo local)";
+      actualizarBarra();
+    }
+    // Refresco automático cada 15s mientras la pestaña esté visible.
+    setInterval(() => {
+      if (document.visibilityState === "visible") sincronizar();
+    }, 15000);
+  })();
+}
