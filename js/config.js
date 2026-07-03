@@ -9,8 +9,8 @@
 //  y volver a publicar, los resultados se comparten entre todos.
 // ============================================================================
 
-export const SUPABASE_URL = "";       // ej: https://abcdefgh.supabase.co
-export const SUPABASE_ANON_KEY = "";  // la clave "anon public"
+export const SUPABASE_URL = "https://euhjspmtvgpqdqfbhqnm.supabase.co";
+export const SUPABASE_ANON_KEY = "sb_publishable_sCeo12D4I5Wh5Jp5yasYww_1uUvN6eb";
 
 // Identificador de la liga (una sola fila compartida por todo el grupo).
 export const LIGA_ID = "principal";
